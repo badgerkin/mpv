@@ -216,59 +216,59 @@ static OSStatus render_cb_compressed(
     
     AudioStreamBasicDescription asbd;
     ca_fill_asbd(ao, &asbd);
-    int maxbitdepth_physical = virtual_asbd.mBitsPerChannel;
-    int max_mBytesPerPacket = virtual_asbd.mBytesPerPacket;
-    int integer_mode_avaliable = (virtual_asbd.mFormatFlags & kAudioFormatFlagIsNonMixable) ? 1 :0;
-    int aligned_low = (asbd.mFormatFlags & kAudioFormatFlagIsAlignedHigh) ? 1 : 0;
+    int virt_bitdepth = virtual_asbd.mBitsPerChannel;
+    int virt_packetbytes = virtual_asbd.mBytesPerPacket;
+    int integer_mode_avaliable = (virtual_asbd.mFormatFlags & kAudioFormatFlagIsNonMixable) ? 1 : 0;
+    int aligned_high = (asbd.mFormatFlags & kAudioFormatFlagIsAlignedHigh) ? 1 : 0;
 
- if ((asbd.mBitsPerChannel == 32) && (asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger)){
-    if ((integer_mode_avaliable == 1) && (maxbitdepth_physical == 24) && (aligned_low == 0) && (max_mBytesPerPacket == 8)){
-        p->convert = (struct ao_convert_fmt){
-        .src_fmt = ao->format,
-        .dst_bits = 32,
-        .pad_msb = 0,
-        .channels   = ao->channels.num,
-        };
-        ao_read_data_converted(ao, &p->convert,
-        &buf.mData, pseudo_frames, end);
-        MP_INFO(ao, "24 Bit aligned low device, no conversion needed.\n");
-   }else if (maxbitdepth_physical == 32){
-
-        p->convert = (struct ao_convert_fmt){
-        .src_fmt = ao->format,
-        .dst_bits = 32,
-        .pad_msb = 0,
-        .channels = ao->channels.num,
-        };
-        ao_read_data_converted(ao, &p->convert,
-        &buf.mData, pseudo_frames, end);
-        MP_INFO(ao, "32 Bit device, no conversion needed.\n");
-    }else if ((integer_mode_avaliable == 1) && (maxbitdepth_physical == 24) && (aligned_low == 1) && (max_mBytesPerPacket == 8)){
-        p->convert = (struct ao_convert_fmt){
-        .src_fmt = ao->format,
-        .dst_bits = 32,
-        .pad_msb = 8,
-        .channels   = ao->channels.num,
-        };
-        ao_read_data_converted(ao, &p->convert,
-        &buf.mData, pseudo_frames, end); // Acturally not sure whether data conversion is needed here.
-        MP_INFO(ao, "24 Bit aligned high device, convert to MSB padding.\n");
-    }else if ((integer_mode_avaliable == 1) && (maxbitdepth_physical == 24) && (max_mBytesPerPacket == 6)){
-        p->convert = (struct ao_convert_fmt){
-        .src_fmt = ao->format,
-        .dst_bits = 24,
-        .pad_msb = 0,
-        .channels   = ao->channels.num,
-        };
-        ao_read_data_converted(ao, &p->convert,
-        &buf.mData, pseudo_frames, end);
-        MP_INFO(ao, "24 Bit packed device, convert to s24.\n");
+    if ((asbd.mBitsPerChannel == 32) && (asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger)){
+        if ((integer_mode_avaliable == 1) && (virt_bitdepth == 24) && (aligned_high == 0) && (virt_packetbytes == 8)){
+            p->convert = (struct ao_convert_fmt){
+                .src_fmt = ao->format,
+                .dst_bits = 32,
+                .pad_msb = 0,
+                .channels = ao->channels.num,
+            };
+            ao_read_data_converted(ao, &p->convert,
+                                   &buf.mData, pseudo_frames, end);
+            MP_INFO(ao, "24 Bit aligned low device, no conversion needed.\n");
+        }else if (virt_mBitsPerChannel == 32){
+            
+            p->convert = (struct ao_convert_fmt){
+                .src_fmt = ao->format,
+                .dst_bits = 32,
+                .pad_msb = 0,
+                .channels = ao->channels.num,
+            };
+            ao_read_data_converted(ao, &p->convert,
+                                   &buf.mData, pseudo_frames, end);
+            MP_INFO(ao, "32 Bit device, no conversion needed.\n");
+        }else if ((integer_mode_avaliable == 1) && (virt_bitdepth == 24) && (aligned_high == 1) && (virt_packetbytes == 8)){
+            p->convert = (struct ao_convert_fmt){
+                .src_fmt = ao->format,
+                .dst_bits = 32,
+                .pad_msb = 8,
+                .channels = ao->channels.num,
+            };
+            ao_read_data_converted(ao, &p->convert,
+                                   &buf.mData, pseudo_frames, end); // Acturally not sure whether data conversion is needed here.
+            MP_INFO(ao, "24 Bit aligned high device, convert to MSB padding.\n");
+        }else if ((integer_mode_avaliable == 1) && (virt_bitdepth == 24) && (virt_packetbytes == 6)){
+            p->convert = (struct ao_convert_fmt){
+                .src_fmt = ao->format,
+                .dst_bits = 24,
+                .pad_msb = 0,
+                .channels = ao->channels.num,
+            };
+            ao_read_data_converted(ao, &p->convert,
+                                   &buf.mData, pseudo_frames, end);
+            MP_INFO(ao, "24 Bit packed device, convert to s24.\n");
+        }else{
+            ao_read_data(ao, &buf.mData, pseudo_frames, end);
+        }
     }else{
         ao_read_data(ao, &buf.mData, pseudo_frames, end);
     }
-}else{
- ao_read_data(ao, &buf.mData, pseudo_frames, end);   
-}
 
     if (p->spdif_hack)
         bad_hack_mygodwhy(buf.mData, pseudo_frames * ao->channels.num);
