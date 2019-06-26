@@ -197,9 +197,10 @@ static OSStatus render_cb_compressed(
 {
     struct ao *ao    = ctx;
     struct priv *p   = ao->priv;
+    AudioStreamBasicDescription virtual_asbd = p->stream_asbd;
     AudioBuffer buf  = out_data->mBuffers[p->stream_idx];
     int requested    = buf.mDataByteSize;
-    int sstride      = p->spdif_hack ? 4 * ao->channels.num : ao->sstride;
+    int sstride      = p->spdif_hack ? 4 * ao->channels.num : virtual_asbd.mBytesPerFrame;
 
     int pseudo_frames = requested / sstride;
 
@@ -212,34 +213,14 @@ static OSStatus render_cb_compressed(
     int64_t end = mp_time_us();
     end += p->hw_latency_us + ca_get_latency(ts)
         + ca_frames_to_us(ao, pseudo_frames);
-
-
-    //struct priv *p = ao->priv;
+    
     AudioStreamBasicDescription asbd;
     ca_fill_asbd(ao, &asbd);
-    //ca_print_asbd(ao, "Our format: ", &asbd);
-            
-    AudioStreamRangedDescription *formats;
-    size_t n_formats;
+    int maxbitdepth_physical = virtual_asbd.mBitsPerChannel;
+    int max_mBytesPerPacket = virtual_asbd.mBytesPerPacket;
+    int integer_mode_avaliable = (virtual_asbd.mFormatFlags & kAudioFormatFlagIsNonMixable) ? 1 :0;
+    int aligned_low = (asbd.mFormatFlags & kAudioFormatFlagIsAlignedHigh) ? 1 : 0;
 
-    CA_GET_ARY(p->stream, kAudioStreamPropertyAvailablePhysicalFormats,       
-                     &formats, &n_formats);     
-    //CHECK_CA_ERROR("could not get number of stream formats");       
-    int maxbitdepth_physical = 0;      
-    int integer_mode_avaliable = 0;
-    int aligned_low = 0;
-    int max_mBytesPerPacket = 0;
-    for (int j = 0; j < n_formats; j++) {    
-        AudioStreamBasicDescription *stream_asbd = &formats[j].mFormat;     
-        if (stream_asbd->mBitsPerChannel > maxbitdepth_physical )       
-            maxbitdepth_physical =stream_asbd->mBitsPerChannel;     
-        if (stream_asbd->mFormatFlags & kAudioFormatFlagIsNonMixable)       
-           integer_mode_avaliable = 1;
-        if (stream_asbd->mFormatFlags & kAudioFormatFlagIsAlignedHigh)       
-           aligned_low = 1;
-        if (stream_asbd->mBytesPerPacket > max_mBytesPerPacket )       
-        max_mBytesPerPacket = stream_asbd->mBytesPerPacket; 
-        }
  if ((asbd.mBitsPerChannel == 32) && (asbd.mFormatFlags & kAudioFormatFlagIsSignedInteger)){
     if ((integer_mode_avaliable == 1) && (maxbitdepth_physical == 24) && (aligned_low == 0) && (max_mBytesPerPacket == 8)){
         p->convert = (struct ao_convert_fmt){
